@@ -1,0 +1,47 @@
+services:
+    mariadb:
+        image: mariadb:10.11.3-jammy
+        volumes:
+            - "guestbook-mariadb:/var/lib/mysql:rw"
+        environment:
+            MARIADB_DATABASE: guestbook
+            MARIADB_USER: guestbook
+            MARIADB_PASSWORD_FILE: /run/secrets/mariadb-userpwd
+            MARIADB_ROOT_PASSWORD_FILE: /run/secrets/mariadb-rootpwd
+        secrets:
+            - mariadb-userpwd
+            - mariadb-rootpwd
+        hostname: guestbook-mariadb
+        networks:
+            - network-be
+    apache:
+        image: php:7.4.33-apache-bullseye
+        depends_on:
+            - mariadb
+        volumes:
+            - "/home/jmasar/guestbook/html:/var/www/html:ro"
+        hostname: guestbook-apache
+        networks:
+            - network-fe
+            - network-be
+        ports:
+            - "8080:80"
+            - "8443:443"
+
+volumes:
+    guestbook-mariadb:
+        name: guestbook-mariadb
+    guestbook-apache:
+        name: guestbook-apache
+
+secrets:
+    mariadb-userpwd:
+        file: ./secrets/mariadb-userpwd.txt
+    mariadb-rootpwd:
+        file: ./secrets/mariadb-rootpwd.txt
+
+networks:
+    network-fe:
+        name: network-fe
+    network-be:
+        name: network-be
