@@ -1,6 +1,7 @@
 services:
     mariadb:
-        image: mariadb:10.11.3-jammy
+        image: mymariadb:1.0
+        build: ./mariadb
         volumes:
             - "guestbook-mariadb:/var/lib/mysql:rw"
         environment:
@@ -9,17 +10,43 @@ services:
             MARIADB_PASSWORD_FILE: /run/secrets/mariadb-userpwd
             MARIADB_ROOT_PASSWORD_FILE: /run/secrets/mariadb-rootpwd
         secrets:
-            - mariadb-userpwd
-            - mariadb-rootpwd
+            - source: mariadb-userpwd
+              target: mariadb-userpwd
+              uid: "0"
+              gid: "0"
+              mode: 0400
+            - source: mariadb-rootpwd
+              target: mariadb-rootpwd
+              uid: "0"
+              gid: "0"
+              mode: 0400
         hostname: guestbook-mariadb
         networks:
             - network-be
     apache:
-        image: php:7.4.33-apache-bullseye
+        image: myapache:1.0
+        build: ./apache
         depends_on:
             - mariadb
         volumes:
-            - "/home/jmasar/guestbook/html:/var/www/html:ro"
+            - "guestbook-apache:/var/www/html:ro"
+        secrets:
+            - source: apachessl-crt
+              target: server.crt
+              uid: "0"
+              gid: "0"
+              mode: 0400
+            - source: apachessl-key
+              target: server.key
+              uid: "0"
+              gid: "0"
+              mode: 0400
+        configs:
+            - source: apachessl-cfg
+              target: /etc/apache2/sites-available/default-ssl.conf
+              uid: "0"
+              gid: "0"
+              mode: 0644
         hostname: guestbook-apache
         networks:
             - network-fe
@@ -34,11 +61,19 @@ volumes:
     guestbook-apache:
         name: guestbook-apache
 
+configs:
+    apachessl-cfg:
+        file: ./apache/default-ssl.conf
+
 secrets:
     mariadb-userpwd:
         file: ./secrets/mariadb-userpwd.txt
     mariadb-rootpwd:
         file: ./secrets/mariadb-rootpwd.txt
+    apachessl-crt:
+        file: ./secrets/server.crt
+    apachessl-key:
+        file: ./secrets/server.key
 
 networks:
     network-fe:
